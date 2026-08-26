@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const http = require('http');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
@@ -41,7 +42,40 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
+const swaggerOptions = {
+  explorer: true,
+  customCssUrl: '/api-docs/swagger-ui.css',
+  customJs: [
+    '/api-docs/swagger-ui-bundle.js',
+    '/api-docs/swagger-ui-standalone-preset.js',
+  ],
+};
+
+app.get('/api-docs', (req, res) => {
+  res.redirect('/api-docs/');
+});
+
+app.get('/api-docs/', (req, res) => {
+  res.send(swaggerUi.generateHTML(swaggerSpec, swaggerOptions));
+});
+
+app.get('/api-docs/swagger-ui.css', (req, res) => {
+  res.sendFile(
+    path.join(__dirname, 'public', 'api-docs', 'swagger-ui.css')
+  );
+});
+
+app.get('/api-docs/swagger-ui-bundle.js', (req, res) => {
+  res.sendFile(
+    path.join(__dirname, 'public', 'api-docs', 'swagger-ui-bundle.js')
+  );
+});
+
+app.get('/api-docs/swagger-ui-standalone-preset.js', (req, res) => {
+  res.sendFile(
+    path.join(__dirname, 'public', 'api-docs', 'swagger-ui-standalone-preset.js')
+  );
+});
 app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 
 app.use('/auth', authRoutes);
