@@ -5,12 +5,15 @@ const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const mongoose = require('mongoose');
+
 const { connectDB, dbHealth } = require('./config/db');
 const swaggerSpec = require('./config/swagger');
+
 const authRoutes = require('./routes/authRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const registerRoutes = require('./routes/registerRoutes');
 const msgRoutes = require('./routes/msgRoutes');
+
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 const attachSocket = require('./utils/socket');
 
@@ -21,7 +24,11 @@ app.use(express.json({ limit: '32kb' }));
 
 app.use(async (req, res, next) => {
   if (process.env.NODE_ENV === 'test') return next();
-  if (mongoose.connection.readyState === 1) return next();
+
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+
   try {
     await connectDB();
     next();
@@ -33,6 +40,7 @@ app.use(async (req, res, next) => {
 app.get('/health', (req, res) => {
   const database = dbHealth();
   const healthy = database.connected;
+
   res.status(healthy ? 200 : 503).json({
     status: healthy ? 'ok' : 'degraded',
     service: 'EYOUTH-30908101301237-EventPulse',
@@ -41,24 +49,32 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.get('/api-docs', (req, res) => {
-  const html = swaggerUi.generateHTML(swaggerSpec, {
-    explorer: true,
-    customCssUrl:
-      'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui.css',
-    customJs: [
-      'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-bundle.js',
-      'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-standalone-preset.js',
-    ],
-  });
+/*
+ * Swagger UI
+ *
+ * Vercel does not reliably serve the Swagger UI static assets
+ * through swagger-ui-express in this Serverless setup, so the
+ * UI assets are loaded from the official swagger-ui-dist CDN.
+ */
+const swaggerOptions = {
+  explorer: true,
+  customCssUrl:
+    'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui.css',
+  customJs: [
+    'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-bundle.js',
+    'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-standalone-preset.js',
+  ],
+};
 
-  res.type('html').send(html);
+app.get('/api-docs', (req, res) => {
+  res.type('html').send(
+    swaggerUi.generateHTML(swaggerSpec, swaggerOptions)
+  );
 });
 
 app.get('/api-docs.json', (req, res) => {
   res.json(swaggerSpec);
 });
-app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 
 app.use('/auth', authRoutes);
 app.use('/events', msgRoutes);
@@ -78,6 +94,7 @@ async function startServer() {
 
   const port = Number(process.env.PORT) || 3000;
   const server = http.createServer(app);
+
   attachSocket(server);
 
   server.listen(port, () => {
