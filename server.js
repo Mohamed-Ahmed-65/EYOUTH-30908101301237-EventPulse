@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const http = require('http');
-const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
@@ -42,39 +41,22 @@ app.get('/health', (req, res) => {
   });
 });
 
-const swaggerOptions = {
-  explorer: true,
-  customCssUrl: '/api-docs/swagger-ui.css',
-  customJs: [
-    '/api-docs/swagger-ui-bundle.js',
-    '/api-docs/swagger-ui-standalone-preset.js',
-  ],
-};
-
 app.get('/api-docs', (req, res) => {
-  res.redirect('/api-docs/');
+  const html = swaggerUi.generateHTML(swaggerSpec, {
+    explorer: true,
+    customCssUrl:
+      'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui.css',
+    customJs: [
+      'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-bundle.js',
+      'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-standalone-preset.js',
+    ],
+  });
+
+  res.type('html').send(html);
 });
 
-app.get('/api-docs/', (req, res) => {
-  res.send(swaggerUi.generateHTML(swaggerSpec, swaggerOptions));
-});
-
-app.get('/api-docs/swagger-ui.css', (req, res) => {
-  res.sendFile(
-    path.join(__dirname, 'public', 'api-docs', 'swagger-ui.css')
-  );
-});
-
-app.get('/api-docs/swagger-ui-bundle.js', (req, res) => {
-  res.sendFile(
-    path.join(__dirname, 'public', 'api-docs', 'swagger-ui-bundle.js')
-  );
-});
-
-app.get('/api-docs/swagger-ui-standalone-preset.js', (req, res) => {
-  res.sendFile(
-    path.join(__dirname, 'public', 'api-docs', 'swagger-ui-standalone-preset.js')
-  );
+app.get('/api-docs.json', (req, res) => {
+  res.json(swaggerSpec);
 });
 app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 
