@@ -3,7 +3,6 @@ require('dotenv').config();
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
-const swaggerUi = require('swagger-ui-express');
 const mongoose = require('mongoose');
 
 const { connectDB, dbHealth } = require('./config/db');
@@ -23,7 +22,9 @@ app.use(cors());
 app.use(express.json({ limit: '32kb' }));
 
 app.use(async (req, res, next) => {
-  if (process.env.NODE_ENV === 'test') return next();
+  if (process.env.NODE_ENV === 'test') {
+    return next();
+  }
 
   if (mongoose.connection.readyState === 1) {
     return next();
@@ -49,27 +50,42 @@ app.get('/health', (req, res) => {
   });
 });
 
-/*
- * Swagger UI
- *
- * Vercel does not reliably serve the Swagger UI static assets
- * through swagger-ui-express in this Serverless setup, so the
- * UI assets are loaded from the official swagger-ui-dist CDN.
- */
-const swaggerOptions = {
-  explorer: true,
-  customCssUrl:
-    'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui.css',
-  customJs: [
-    'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-bundle.js',
-    'https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-standalone-preset.js',
-  ],
-};
-
 app.get('/api-docs', (req, res) => {
-  res.type('html').send(
-    swaggerUi.generateHTML(swaggerSpec, swaggerOptions)
-  );
+  res.type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventPulse API Documentation</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui.css"
+  >
+</head>
+
+<body>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.32.14/swagger-ui-standalone-preset.js"></script>
+
+  <script>
+    window.onload = function () {
+      window.ui = SwaggerUIBundle({
+        url: '/api-docs.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: 'StandaloneLayout'
+      });
+    };
+  </script>
+</body>
+</html>`);
 });
 
 app.get('/api-docs.json', (req, res) => {
@@ -77,8 +93,10 @@ app.get('/api-docs.json', (req, res) => {
 });
 
 app.use('/auth', authRoutes);
+
 app.use('/events', msgRoutes);
 app.use('/events', eventRoutes);
+
 app.use('/registrations', registerRoutes);
 
 app.use(notFound);
